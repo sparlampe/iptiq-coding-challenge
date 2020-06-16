@@ -7,8 +7,19 @@ lazy val global = project
   .settings(settings)
   .disablePlugins(AssemblyPlugin)
   .aggregate(
-    provider
+    common,
+    provider,
+    balancer
   )
+
+lazy val common = project
+  .settings(
+    name := "common",
+    settings,
+    libraryDependencies ++= commonDependencies
+  )
+  .disablePlugins(AssemblyPlugin)
+
 lazy val provider = project
   .settings(
     name := "provider",
@@ -18,6 +29,22 @@ lazy val provider = project
   )
   .enablePlugins(DockerPlugin)
   .enablePlugins(JavaAppPackaging)
+  .dependsOn(
+    common
+  )
+
+lazy val balancer = project
+  .settings(
+    name := "balancer",
+    settings,
+    assemblySettings,
+    libraryDependencies ++= commonDependencies
+  )
+  .enablePlugins(DockerPlugin)
+  .enablePlugins(JavaAppPackaging)
+  .dependsOn(
+    common
+  )
 
 lazy val dependencies =
   new {
@@ -37,6 +64,7 @@ lazy val dependencies =
     val scalaLogging    = "com.typesafe.scala-logging" %% "scala-logging"           % scalaLoggingV
     val slf4j           = "org.slf4j"                  % "jcl-over-slf4j"           % slf4jV
     val typesafeConfig  = "com.typesafe"               % "config"                   % typesafeConfigV
+    val akkaMarsh       = "com.typesafe.akka"          %% "akka-http-spray-json"    % akkaHttpV
     val akka            = "com.typesafe.akka"          %% "akka-stream"             % akkaV
     val akkaTestKit     = "com.typesafe.akka"          %% "akka-testkit"            % akkaV
     val akkaHttp        = "com.typesafe.akka"          %% "akka-http"               % akkaHttpV
@@ -55,6 +83,7 @@ lazy val commonDependencies = Seq(
   dependencies.typesafeConfig,
   dependencies.akka,
   dependencies.akkaHttp,
+  dependencies.akkaMarsh,
   dependencies.uuid,
   dependencies.akkaTestKit     % "test",
   dependencies.akkaHttpTestKit % "test",
