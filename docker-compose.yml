@@ -1,4 +1,8 @@
 version: "3.8"
 services:
-networks:
-  load-balancing:
+
+  provider:
+    image: provider:0.1.0-SNAPSHOT
+    environment:
+      - BIND_PORT=5000
+    network_mode: host
