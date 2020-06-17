@@ -16,7 +16,7 @@ import io.pusteblume.loadbalancer.balancer.actors.ProviderBookKeeper.{
   RegisteredProviders
 }
 import io.pusteblume.loadbalancer.balancer.routes.RegistrationRouter
-import io.pusteblume.loadbalancer.balancer.strategy.BalancingStrategy
+import io.pusteblume.loadbalancer.balancer.strategy.{ BalancingStrategy, RandomBalancingStrategy }
 import io.pusteblume.loadbalancer.models.{ Provider, ProviderState }
 
 import scala.concurrent.duration._
@@ -32,11 +32,9 @@ object Main extends App with LazyLogging {
   implicit val executionContext: ExecutionContextExecutor = system.dispatcher
   implicit val timeout: Timeout                           = Timeout(5 seconds)
 
-  val dummyStrategy: BalancingStrategy = new BalancingStrategy {
-    override def getNextProvider(providers: List[ProviderState]): Option[Provider] = None
-  }
   lazy val providerBookKeeper: ActorRef =
-    system.actorOf(Props(new ProviderBookKeeper(maxProviderCount, dummyStrategy)), name = "bookKeeperActor")
+    system.actorOf(Props(new ProviderBookKeeper(maxProviderCount, new RandomBalancingStrategy)),
+                   name = "bookKeeperActor")
 
   @SuppressWarnings(Array("org.wartremover.warts.Any"))
   val registerProvider: Provider => Future[String] = provider => {
