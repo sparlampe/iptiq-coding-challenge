@@ -1,19 +1,20 @@
 package io.pusteblume.loadbalancer.provider
 
+import akka.http.scaladsl.server.Directives._
 import akka.actor.ActorSystem
 import akka.http.scaladsl.Http
-import akka.http.scaladsl.model.{ ContentTypes, HttpEntity, HttpMethods, HttpRequest }
+import akka.http.scaladsl.model.{ContentTypes, HttpEntity, HttpMethods, HttpRequest}
 import akka.http.scaladsl.server.Route
-import com.typesafe.config.{ Config, ConfigFactory }
+import com.typesafe.config.{Config, ConfigFactory}
 import com.typesafe.scalalogging.LazyLogging
 import io.jvm.uuid.UUID
 import io.pusteblume.loadbalancer.models.ProviderRegistrationInfo
-import io.pusteblume.loadbalancer.provider.routes.ServiceRouter
+import io.pusteblume.loadbalancer.provider.routes.{HealthCheckRouter, ServiceRouter}
 import io.pusteblume.loadbalancer.models.ProviderJson._
 import spray.json._
 
 import scala.concurrent.ExecutionContextExecutor
-import scala.util.{ Failure, Success }
+import scala.util.{Failure, Success}
 
 object Main extends App with LazyLogging {
   private implicit val system: ActorSystem                        = ActorSystem("main-actor-system")
@@ -24,7 +25,7 @@ object Main extends App with LazyLogging {
   val port: Int                  = config.getInt("app.http.port")
   val lbRegisterEndpoint: String = config.getString("app.http.lbhost")
   val maxConcurrentRequests: Int = config.getInt("app.max-concurrent-requests")
-  val allRoutes: Route           = ServiceRouter.routes(providerId)
+  val allRoutes: Route           = ServiceRouter.routes(providerId) ~ HealthCheckRouter.routes
 
   Http()
     .bindAndHandle(allRoutes, "0.0.0.0", port)
