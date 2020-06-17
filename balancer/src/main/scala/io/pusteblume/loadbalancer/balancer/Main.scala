@@ -3,20 +3,25 @@ package io.pusteblume.loadbalancer.balancer
 import akka.pattern.ask
 import akka.actor._
 import akka.http.scaladsl.Http
+import akka.http.scaladsl.model.{ HttpRequest, HttpResponse }
+import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.Route
 import akka.util.Timeout
 import com.typesafe.config.{ Config, ConfigFactory }
 import com.typesafe.scalalogging.LazyLogging
 import io.pusteblume.loadbalancer.balancer.actors.ProviderBookKeeper
 import io.pusteblume.loadbalancer.balancer.actors.ProviderBookKeeper.{
+  CannotAllocateProvider,
+  GetNextProvider,
   GetProviders,
   MaxCapacityReached,
+  NextAvailableProvider,
   RegisterProvider,
   Registered,
   RegisteredProviders
 }
-import io.pusteblume.loadbalancer.balancer.routes.RegistrationRouter
-import io.pusteblume.loadbalancer.balancer.strategy.{ BalancingStrategy, RandomBalancingStrategy }
+import io.pusteblume.loadbalancer.balancer.routes.{ RegistrationRouter, ServiceRouter }
+import io.pusteblume.loadbalancer.balancer.strategy.RandomBalancingStrategy
 import io.pusteblume.loadbalancer.models.{ Provider, ProviderState }
 
 import scala.concurrent.duration._
@@ -48,9 +53,19 @@ object Main extends App with LazyLogging {
   val retrieveProviders: () => Future[List[ProviderState]] = () => {
     providerBookKeeper ? GetProviders map { case RegisteredProviders(list) => list }
   }
-
   val registrationRoutes: Route = RegistrationRouter.routes(registerProvider, retrieveProviders)
-  val allRoutes: Route          = registrationRoutes
+
+  val dispatchToProvider: () => Future[HttpResponse] = () =>
+    providerBookKeeper ? GetNextProvider flatMap {
+      case NextAvailableProvider(p) =>
+        Http()
+          .singleRequest(HttpRequest(uri = s"http://${p.ip}:${p.port.toString}/get"))
+      case CannotAllocateProvider => Future.failed(new Throwable("Capacity exceeded"))
+  }
+  val serviceRoutes: Route = ServiceRouter.routes(dispatchToProvider)
+
+  val allRoutes: Route = registrationRoutes ~ serviceRoutes
+
   Http()
     .bindAndHandle(allRoutes, "0.0.0.0", port)
     .onComplete[Any] {
