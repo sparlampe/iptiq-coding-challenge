@@ -16,3 +16,19 @@ class RandomBalancingStrategy extends BalancingStrategy {
       case viableProviders                              => Some(viableProviders(Random.between(1, viableProviders.size) - 1).providerInfo)
     }
 }
+
+class RoundRobinBalancingStrategy extends BalancingStrategy {
+  var lastProvider: Option[Provider] = None
+
+  override def getNextProvider(providers: List[ProviderState]): Option[Provider] = {
+    lastProvider = lastProvider match {
+      case None => providers.headOption.map(_.providerInfo)
+      case Some(provider) =>
+        providers.zipWithIndex.find(p => p._1.providerInfo.id == provider.id) match {
+          case None                => providers.headOption.map(_.providerInfo)
+          case Some((_, position)) => Some(providers((position + 1) % providers.size).providerInfo)
+        }
+    }
+    lastProvider
+  }
+}
