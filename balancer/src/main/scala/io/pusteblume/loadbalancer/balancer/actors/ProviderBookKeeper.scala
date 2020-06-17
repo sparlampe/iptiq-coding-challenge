@@ -2,6 +2,7 @@ package io.pusteblume.loadbalancer.balancer.actors
 
 import akka.actor.Actor
 import com.typesafe.scalalogging.LazyLogging
+import io.pusteblume.loadbalancer.balancer.actors.Poller.{ HeartBeat, SkippedHeartBeat }
 import io.pusteblume.loadbalancer.balancer.actors.ProviderBookKeeper._
 import io.pusteblume.loadbalancer.balancer.strategy.BalancingStrategy
 import io.pusteblume.loadbalancer.models.{ Provider, ProviderState }
@@ -39,6 +40,8 @@ class ProviderBookKeeper(maxProviders: Int, balancingStrategy: BalancingStrategy
       }
     case ActivateProvider(id)   => { setIsActivateProvider(id, true) }
     case DeactivateProvider(id) => { setIsActivateProvider(id, false) }
+    case SkippedHeartBeat(id)   => { setIsActivateProvider(id, false) }
+    case HeartBeat(id)          => ()
   }
 }
 

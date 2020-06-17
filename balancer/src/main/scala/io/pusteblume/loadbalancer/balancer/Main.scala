@@ -9,7 +9,8 @@ import akka.http.scaladsl.server.Route
 import akka.util.Timeout
 import com.typesafe.config.{Config, ConfigFactory}
 import com.typesafe.scalalogging.LazyLogging
-import io.pusteblume.loadbalancer.balancer.actors.ProviderBookKeeper
+import io.pusteblume.loadbalancer.balancer.actors.Poller.RegisterProviderForPolling
+import io.pusteblume.loadbalancer.balancer.actors.{Poller, ProviderBookKeeper}
 import io.pusteblume.loadbalancer.balancer.actors.ProviderBookKeeper.{ActivateProvider, CannotAllocateProvider, DeactivateProvider, GetNextProvider, GetProviders, MaxCapacityReached, NextAvailableProvider, RegisterProvider, Registered, RegisteredProviders}
 import io.pusteblume.loadbalancer.balancer.routes.{RegistrationRouter, ServiceRouter}
 import io.pusteblume.loadbalancer.balancer.strategy.RoundRobinBalancingStrategy
@@ -23,6 +24,7 @@ object Main extends App with LazyLogging {
   val config: Config        = ConfigFactory.load()
   val port: Int             = config.getInt("app.http.port")
   val maxProviderCount: Int = config.getInt("app.max-providers")
+  val pollingInterval:Int =config.getInt("app.polling-interval-sec")
 
   implicit val system: ActorSystem                        = ActorSystem("main-actor-system")
   implicit val executionContext: ExecutionContextExecutor = system.dispatcher
@@ -32,10 +34,15 @@ object Main extends App with LazyLogging {
     system.actorOf(Props(new ProviderBookKeeper(maxProviderCount, new RoundRobinBalancingStrategy)),
                    name = "bookKeeperActor")
 
+  lazy val poller: ActorRef = system.actorOf(Props(new Poller(providerBookKeeper, pollingInterval)),
+    name = "pollerActor")
+  
   @SuppressWarnings(Array("org.wartremover.warts.Any"))
   val registerProvider: Provider => Future[String] = provider => {
     providerBookKeeper ? RegisterProvider(provider) flatMap {
-      case Registered(id) => Future.successful(s"Provider $id registered")
+      case Registered(id) => 
+        poller! RegisterProviderForPolling(provider)
+        Future.successful(s"Provider $id registered")
       case MaxCapacityReached(id) =>
         Future.failed[String](new Throwable(s"Provider $id could not be registered, max capacity reached"))
     }
