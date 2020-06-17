@@ -13,9 +13,22 @@ import io.pusteblume.loadbalancer.models.ProviderJson._
 
 object RegistrationRouter {
   def routes(registerProvider: Provider => Future[String],
-             retrieveProviders: () => Future[List[ProviderState]]): Route =
+             retrieveProviders: () => Future[List[ProviderState]],
+             setIsActive: (String, Boolean) => ()): Route =
     pathPrefix("provider") {
       concat(
+        patch {
+          concat(
+            path(Segment / "deactivate") { providerId =>
+              setIsActive(providerId, false)
+              complete(StatusCodes.OK -> s"Deactivated $providerId")
+            },
+            path(Segment / "activate") { providerId =>
+              setIsActive(providerId, true)
+              complete(StatusCodes.OK -> s"Activated $providerId")
+            }
+          )
+        },
         post {
           extractClientIP(ip => {
             ip.getAddress().asScala match {

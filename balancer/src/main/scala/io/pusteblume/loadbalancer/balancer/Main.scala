@@ -3,30 +3,21 @@ package io.pusteblume.loadbalancer.balancer
 import akka.pattern.ask
 import akka.actor._
 import akka.http.scaladsl.Http
-import akka.http.scaladsl.model.{ HttpRequest, HttpResponse }
+import akka.http.scaladsl.model.{HttpRequest, HttpResponse}
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.Route
 import akka.util.Timeout
-import com.typesafe.config.{ Config, ConfigFactory }
+import com.typesafe.config.{Config, ConfigFactory}
 import com.typesafe.scalalogging.LazyLogging
 import io.pusteblume.loadbalancer.balancer.actors.ProviderBookKeeper
-import io.pusteblume.loadbalancer.balancer.actors.ProviderBookKeeper.{
-  CannotAllocateProvider,
-  GetNextProvider,
-  GetProviders,
-  MaxCapacityReached,
-  NextAvailableProvider,
-  RegisterProvider,
-  Registered,
-  RegisteredProviders
-}
-import io.pusteblume.loadbalancer.balancer.routes.{ RegistrationRouter, ServiceRouter }
+import io.pusteblume.loadbalancer.balancer.actors.ProviderBookKeeper.{ActivateProvider, CannotAllocateProvider, DeactivateProvider, GetNextProvider, GetProviders, MaxCapacityReached, NextAvailableProvider, RegisterProvider, Registered, RegisteredProviders}
+import io.pusteblume.loadbalancer.balancer.routes.{RegistrationRouter, ServiceRouter}
 import io.pusteblume.loadbalancer.balancer.strategy.RoundRobinBalancingStrategy
-import io.pusteblume.loadbalancer.models.{ Provider, ProviderState }
+import io.pusteblume.loadbalancer.models.{Provider, ProviderState}
 
 import scala.concurrent.duration._
-import scala.concurrent.{ ExecutionContextExecutor, Future }
-import scala.util.{ Failure, Success }
+import scala.concurrent.{ExecutionContextExecutor, Future}
+import scala.util.{Failure, Success}
 
 object Main extends App with LazyLogging {
   val config: Config        = ConfigFactory.load()
@@ -53,7 +44,14 @@ object Main extends App with LazyLogging {
   val retrieveProviders: () => Future[List[ProviderState]] = () => {
     providerBookKeeper ? GetProviders map { case RegisteredProviders(list) => list }
   }
-  val registrationRoutes: Route = RegistrationRouter.routes(registerProvider, retrieveProviders)
+  @SuppressWarnings(Array("org.wartremover.warts.Any"))
+  val setIsActive: (String, Boolean)=>() = (providerId,isActive) => {
+    isActive match {
+      case true => providerBookKeeper ! ActivateProvider(providerId)
+      case false => providerBookKeeper ! DeactivateProvider(providerId)
+    }
+  }
+  val registrationRoutes: Route = RegistrationRouter.routes(registerProvider, retrieveProviders, setIsActive)
 
   val dispatchToProvider: () => Future[HttpResponse] = () =>
     providerBookKeeper ? GetNextProvider flatMap {

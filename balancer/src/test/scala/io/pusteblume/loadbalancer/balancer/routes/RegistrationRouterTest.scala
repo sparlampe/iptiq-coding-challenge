@@ -17,20 +17,35 @@ class RegistrationRouterTest extends AnyWordSpec with Matchers with ScalatestRou
 
   val registerProviderSuccess: Provider => Future[String]         = _ => Future.successful("success")
   val retrieveProvidersSuccess: () => Future[List[ProviderState]] = () => Future.successful(List[ProviderState]())
+  val setIsActive: (String, Boolean)=>() = (providerId,isActive) => ()
 
   "The service" should {
     "return CREATED if registration successful" in {
       val info = ProviderRegistrationInfo("someId", 5000, 10).toJson.toString()
       Post("/provider", HttpEntity(ContentTypes.`application/json`, info))
         .withHeaders(`Remote-Address`(RemoteAddress(InetAddress.getByName("192.168.3.12")))) ~>
-      RegistrationRouter.routes(registerProviderSuccess, retrieveProvidersSuccess) ~> check {
+      RegistrationRouter.routes(registerProviderSuccess, retrieveProvidersSuccess, setIsActive) ~> check {
         status should ===(StatusCodes.Created)
       }
     }
 
     "return OK if retrieval is successful" in {
       Get("/provider") ~>
-      RegistrationRouter.routes(registerProviderSuccess, retrieveProvidersSuccess) ~> check {
+      RegistrationRouter.routes(registerProviderSuccess, retrieveProvidersSuccess, setIsActive) ~> check {
+        status should ===(StatusCodes.OK)
+      }
+    }
+    
+    "return OK after a request to activate" in {
+      Patch("/provider/someId/activate") ~>
+        RegistrationRouter.routes(registerProviderSuccess, retrieveProvidersSuccess, setIsActive) ~> check {
+        status should ===(StatusCodes.OK)
+      }
+    }
+
+    "return OK after a request to deactivate" in {
+      Patch("/provider/someId/activate") ~>
+        RegistrationRouter.routes(registerProviderSuccess, retrieveProvidersSuccess, setIsActive) ~> check {
         status should ===(StatusCodes.OK)
       }
     }
