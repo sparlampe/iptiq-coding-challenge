@@ -34,3 +34,9 @@ to demonstrate the functionality
 - start the cluster, retrieve all the providers calling `curl -X GET localhost:8080/provider`
 - deactivate one provider by calling `curl -X PATCH localhost:8080/provider/PROVIDER_ID/activate `
 - execute `curl -X GET localhost:8080/get` several times to see the excluded provider does not receive request.
+
+#Step 6 – Heart beat checker 
+- start the cluster, retrieve all the providers calling `curl -X GET localhost:8080/provider` 
+- notice that the all providers are active
+- deactivate one provider by stopping its container`
+- retrieve all the providers calling `curl -X GET localhost:8080/provider` notice the stopped provider is inactive
