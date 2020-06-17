@@ -20,16 +20,16 @@ class RandomBalancingStrategy extends BalancingStrategy {
 class RoundRobinBalancingStrategy extends BalancingStrategy {
   var lastProvider: Option[Provider] = None
 
-  def findNextViableProvider(providers: List[ProviderState], startAt:Int, analyzed: Int): Option[Provider] = {
+  def findNextViableProvider(providers: List[ProviderState], startAt: Int, analyzed: Int): Option[Provider] = {
     val providerCount = providers.size
     analyzed match {
       case `providerCount` => None
       case _ => {
-        val provider = providers(startAt%providerCount)
-        if(provider.isActive) {
+        val provider = providers(startAt % providerCount)
+        if (provider.isActive) {
           Some(provider.providerInfo)
         } else {
-          findNextViableProvider(providers, startAt+1,analyzed+1)
+          findNextViableProvider(providers, startAt + 1, analyzed + 1)
         }
       }
     }
@@ -37,11 +37,11 @@ class RoundRobinBalancingStrategy extends BalancingStrategy {
 
   override def getNextProvider(providers: List[ProviderState]): Option[Provider] = {
     lastProvider = lastProvider match {
-      case None => findNextViableProvider(providers,0,0)
+      case None => findNextViableProvider(providers, 0, 0)
       case Some(provider) =>
         providers.zipWithIndex.find(p => p._1.providerInfo.id == provider.id) match {
-          case None             => findNextViableProvider(providers,0,0)
-          case Some((_, position)) => findNextViableProvider(providers,position+1,0)
+          case None                => findNextViableProvider(providers, 0, 0)
+          case Some((_, position)) => findNextViableProvider(providers, position + 1, 0)
         }
     }
     lastProvider

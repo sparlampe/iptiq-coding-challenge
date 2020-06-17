@@ -3,7 +3,9 @@ package io.pusteblume.loadbalancer.balancer.actors
 import akka.actor.{ ActorSystem, Props }
 import akka.testkit.{ ImplicitSender, TestKit }
 import io.pusteblume.loadbalancer.balancer.actors.ProviderBookKeeper.{
+  ActivateProvider,
   CannotAllocateProvider,
+  DeactivateProvider,
   GetNextProvider,
   GetProviders,
   MaxCapacityReached,
@@ -84,6 +86,30 @@ class ProviderBookKeeperTest()
       providerBookKeeper ! GetNextProvider
       expectMsgPF() {
         case CannotAllocateProvider => ()
+      }
+    }
+    "set specified provider inactive/active if requested" in {
+      ignoreMsg {
+        case Registered(_) => true
+      }
+      val dummyBalancingStrategy = new BalancingStrategy {
+        override def getNextProvider(providers: List[ProviderState]): Option[Provider] = None
+      }
+      val providerBookKeeper = system.actorOf(Props(new ProviderBookKeeper(2, dummyBalancingStrategy)))
+      providerBookKeeper ! RegisterProvider(Provider("someId1", "someIp", 5000, 10))
+      providerBookKeeper ! GetProviders
+      expectMsgPF() {
+        case RegisteredProviders(List(ProviderState(Provider("someId1", "someIp", 5000, 10), true))) => ()
+      }
+      providerBookKeeper ! DeactivateProvider("someId1")
+      providerBookKeeper ! GetProviders
+      expectMsgPF() {
+        case RegisteredProviders(List(ProviderState(Provider("someId1", "someIp", 5000, 10), false))) => ()
+      }
+      providerBookKeeper ! ActivateProvider("someId1")
+      providerBookKeeper ! GetProviders
+      expectMsgPF() {
+        case RegisteredProviders(List(ProviderState(Provider("someId1", "someIp", 5000, 10), true))) => ()
       }
     }
   }

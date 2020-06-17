@@ -12,6 +12,11 @@ class ProviderBookKeeper(maxProviders: Int, balancingStrategy: BalancingStrategy
   @SuppressWarnings(Array("org.wartremover.warts.MutableDataStructures"))
   val providers: mutable.Map[String, ProviderState] = mutable.Map[String, ProviderState]()
 
+  def setIsActivateProvider(providerId: String, isActive: Boolean) =
+    if (providers.contains(providerId)) {
+      providers(providerId) = providers(providerId).copy(isActive = isActive)
+    }
+
   def receive: Receive = {
     case RegisterProvider(provider) =>
       providers.size match {
@@ -32,6 +37,8 @@ class ProviderBookKeeper(maxProviders: Int, balancingStrategy: BalancingStrategy
         case Some(provider) =>
           sender ! NextAvailableProvider(provider)
       }
+    case ActivateProvider(id)   => { setIsActivateProvider(id, true) }
+    case DeactivateProvider(id) => { setIsActivateProvider(id, false) }
   }
 }
 
@@ -44,4 +51,6 @@ object ProviderBookKeeper {
   final case object GetNextProvider
   final case object CannotAllocateProvider
   final case class NextAvailableProvider(provider: Provider)
+  final case class ActivateProvider(providerId: String)
+  final case class DeactivateProvider(providerId: String)
 }
