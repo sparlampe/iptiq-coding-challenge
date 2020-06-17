@@ -19,7 +19,7 @@ class ProviderBookKeeper(maxProviders: Int, balancingStrategy: BalancingStrategy
           logger.warn(s"Cannot register provider ${provider.id}, max capacity reached.")
           sender ! MaxCapacityReached(provider.id: String)
         case _ =>
-          providers(provider.id) = ProviderState(provider)
+          providers(provider.id) = ProviderState(provider, true)
           logger.info(s"Registered ${provider.id}.")
           sender ! Registered(provider.id: String)
       }
