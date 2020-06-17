@@ -29,3 +29,8 @@ to demonstrate the functionality
 `sbt balancer/docker:publishLocal`
 - start the cluster with, say, 4 providers by executing `docker-compose up -d --scale provider=4`
 - execute `curl -X GET localhost:8080/get` several time to see **periodic** responses from different providers.
+
+#Step 5 – Manual node exclusion / inclusion
+- start the cluster, retrieve all the providers calling `curl -X GET localhost:8080/provider`
+- deactivate one provider by calling `curl -X PATCH localhost:8080/provider/PROVIDER_ID/activate `
+- execute `curl -X GET localhost:8080/get` several times to see the excluded provider does not receive request.
